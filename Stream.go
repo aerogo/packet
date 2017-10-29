@@ -17,15 +17,15 @@ func (stream *Stream) Read() error {
 	lengthBuffer := make([]byte, 8)
 
 	for {
-		n, err := stream.Connection.Read(typeBuffer)
+		_, err := stream.Connection.Read(typeBuffer)
 
-		if err != nil || n != 1 {
+		if err != nil {
 			return err
 		}
 
-		n, err = stream.Connection.Read(lengthBuffer)
+		_, err = stream.Connection.Read(lengthBuffer)
 
-		if err != nil || n != 8 {
+		if err != nil {
 			return err
 		}
 
