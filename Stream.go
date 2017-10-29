@@ -1,7 +1,6 @@
 package packet
 
 import (
-	"fmt"
 	"net"
 )
 
@@ -13,7 +12,7 @@ type Stream struct {
 }
 
 // Read ...
-func (stream *Stream) Read() {
+func (stream *Stream) Read() error {
 	typeBuffer := make([]byte, 1)
 	lengthBuffer := make([]byte, 8)
 
@@ -21,19 +20,19 @@ func (stream *Stream) Read() {
 		n, err := stream.Connection.Read(typeBuffer)
 
 		if err != nil || n != 1 {
-			break
+			return err
 		}
 
 		n, err = stream.Connection.Read(lengthBuffer)
 
 		if err != nil || n != 8 {
-			break
+			return err
 		}
 
 		length, err := fromBytes(lengthBuffer)
 
 		if err != nil {
-			break
+			return err
 		}
 
 		data := make([]byte, length)
@@ -44,12 +43,8 @@ func (stream *Stream) Read() {
 			readLength += n
 
 			if err != nil {
-				break
+				return err
 			}
-		}
-
-		if readLength < len(data) {
-			break
 		}
 
 		stream.Incoming <- New(typeBuffer[0], data)
@@ -57,7 +52,7 @@ func (stream *Stream) Read() {
 }
 
 // Write ...
-func (stream *Stream) Write() {
+func (stream *Stream) Write() error {
 	for packet := range stream.Outgoing {
 		msg := packet.Bytes()
 		totalWritten := 0
@@ -66,11 +61,12 @@ func (stream *Stream) Write() {
 			writtenThisCall, err := stream.Connection.Write(msg[totalWritten:])
 
 			if err != nil {
-				fmt.Println("Error writing", err)
-				return
+				return err
 			}
 
 			totalWritten += writtenThisCall
 		}
 	}
+
+	return nil
 }
