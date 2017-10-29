@@ -18,24 +18,21 @@ func (stream *Stream) Read() {
 	lengthBuffer := make([]byte, 8)
 
 	for {
-		_, err := stream.Connection.Read(typeBuffer)
+		n, err := stream.Connection.Read(typeBuffer)
 
-		if err != nil {
-			fmt.Println("R Packet Type fail", err)
+		if err != nil || n != 1 {
 			break
 		}
 
-		_, err = stream.Connection.Read(lengthBuffer)
+		n, err = stream.Connection.Read(lengthBuffer)
 
-		if err != nil {
-			fmt.Println("R Packet Length fail", stream.Connection.RemoteAddr(), err)
+		if err != nil || n != 8 {
 			break
 		}
 
 		length, err := fromBytes(lengthBuffer)
 
 		if err != nil {
-			fmt.Println("R Packet Length decode fail", stream.Connection.RemoteAddr(), err)
 			break
 		}
 
@@ -47,27 +44,13 @@ func (stream *Stream) Read() {
 			readLength += n
 
 			if err != nil {
-				fmt.Println("R Data read fail", stream.Connection.RemoteAddr(), err)
 				break
 			}
 		}
 
 		if readLength < len(data) {
-			fmt.Println("R Data read length fail", stream.Connection.RemoteAddr(), err)
 			break
 		}
-
-		// msg, err := ioutil.ReadAll(stream.Connection)
-
-		// if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-		// 	fmt.Println("R Timeout", stream.Connection.RemoteAddr())
-		// 	break
-		// }
-
-		// if err != nil && err != io.EOF && strings.Contains(err.Error(), "Connection reset") {
-		// 	fmt.Println("R Disconnected", stream.Connection.RemoteAddr())
-		// 	break
-		// }
 
 		stream.Incoming <- New(typeBuffer[0], data)
 	}
