@@ -13,8 +13,8 @@ type Stream struct {
 
 // Read ...
 func (stream *Stream) Read() error {
-	typeBuffer := make([]byte, 1)
-	lengthBuffer := make([]byte, 8)
+	typeBuffer := make([]byte, 1, 1)
+	lengthBuffer := make([]byte, 8, 8)
 
 	for {
 		_, err := stream.Connection.Read(typeBuffer)
@@ -29,7 +29,7 @@ func (stream *Stream) Read() error {
 			return err
 		}
 
-		length, err := fromBytes(lengthBuffer)
+		length, err := Int64FromBytes(lengthBuffer)
 
 		if err != nil {
 			return err

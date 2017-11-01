@@ -19,7 +19,7 @@ func New(byteCode byte, data []byte) *Packet {
 // Bytes ...
 func (packet *Packet) Bytes() []byte {
 	result := []byte{packet.Type}
-	result = append(result, toBytes(packet.Length)...)
+	result = append(result, Int64ToBytes(packet.Length)...)
 	result = append(result, packet.Data...)
 	return result
 }
