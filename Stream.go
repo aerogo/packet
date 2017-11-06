@@ -60,6 +60,7 @@ func (stream *Stream) OnError(callback func(IOError)) {
 
 // Close ...
 func (stream *Stream) Close() {
+	stream.closed.Store(true)
 	stream.close <- true
 	<-stream.close
 }
@@ -148,7 +149,6 @@ func (stream *Stream) Write() {
 				stream.onError(IOError{connection, err})
 			}
 
-			stream.closed.Store(true)
 			close(stream.close)
 			return
 		}
