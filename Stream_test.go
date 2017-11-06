@@ -19,6 +19,9 @@ func startServer(t *testing.T) {
 			assert.NoError(t, err)
 
 			client := packet.NewStream(1024)
+			client.OnError(func(_ packet.IOError) {
+				client.Close()
+			})
 			client.SetConnection(conn)
 
 			go func() {

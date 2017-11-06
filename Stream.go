@@ -12,6 +12,7 @@ type Stream struct {
 	Incoming   chan *Packet
 	Outgoing   chan *Packet
 	onError    func(IOError)
+	close      chan bool
 	closed     atomic.Value
 }
 
@@ -26,6 +27,7 @@ func NewStream(channelBufferSize int) *Stream {
 	stream := &Stream{
 		Incoming: make(chan *Packet, channelBufferSize),
 		Outgoing: make(chan *Packet, channelBufferSize),
+		close:    make(chan bool),
 		onError:  func(IOError) {},
 	}
 
@@ -57,16 +59,9 @@ func (stream *Stream) OnError(callback func(IOError)) {
 }
 
 // Close ...
-func (stream *Stream) Close() error {
-	stream.closed.Store(true)
-	err := stream.Connection().Close()
-
-	if err != nil {
-		return err
-	}
-
-	close(stream.Outgoing)
-	return nil
+func (stream *Stream) Close() {
+	stream.close <- true
+	<-stream.close
 }
 
 // Read ...
@@ -120,27 +115,43 @@ func (stream *Stream) Read(connection net.Conn) {
 
 // Write ...
 func (stream *Stream) Write() {
-	for packet := range stream.Outgoing {
-		msg := packet.Bytes()
+	for {
+		select {
+		case packet := <-stream.Outgoing:
+			msg := packet.Bytes()
 
-	retry:
-		if stream.closed.Load().(bool) {
-			return
-		}
+		retry:
+			if stream.closed.Load().(bool) {
+				break
+			}
 
-		connection := stream.Connection()
-		totalWritten := 0
+			connection := stream.Connection()
+			totalWritten := 0
 
-		for totalWritten < len(msg) {
-			writtenThisCall, err := connection.Write(msg[totalWritten:])
+			for totalWritten < len(msg) {
+				writtenThisCall, err := connection.Write(msg[totalWritten:])
+
+				if err != nil {
+					stream.onError(IOError{connection, err})
+					time.Sleep(1 * time.Millisecond)
+					goto retry
+				}
+
+				totalWritten += writtenThisCall
+			}
+
+		case <-stream.close:
+			connection := stream.Connection()
+			err := connection.Close()
 
 			if err != nil {
 				stream.onError(IOError{connection, err})
-				time.Sleep(1 * time.Millisecond)
-				goto retry
 			}
 
-			totalWritten += writtenThisCall
+			stream.closed.Store(true)
+			close(stream.Outgoing)
+			close(stream.close)
+			return
 		}
 	}
 }
