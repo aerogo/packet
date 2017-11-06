@@ -149,7 +149,6 @@ func (stream *Stream) Write() {
 			}
 
 			stream.closed.Store(true)
-			close(stream.Outgoing)
 			close(stream.close)
 			return
 		}
