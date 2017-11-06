@@ -11,6 +11,14 @@ type Stream struct {
 	connection atomic.Value
 	Incoming   chan *Packet
 	Outgoing   chan *Packet
+	Errors     chan IOError
+	closed     atomic.Value
+}
+
+// IOError ...
+type IOError struct {
+	Connection net.Conn
+	Error      error
 }
 
 // NewStream ...
@@ -18,9 +26,11 @@ func NewStream(channelBufferSize int) *Stream {
 	stream := &Stream{
 		Incoming: make(chan *Packet, channelBufferSize),
 		Outgoing: make(chan *Packet, channelBufferSize),
+		Errors:   make(chan IOError),
 	}
 
-	go stream.Read()
+	stream.closed.Store(false)
+
 	go stream.Write()
 
 	return stream
@@ -34,48 +44,64 @@ func (stream *Stream) Connection() net.Conn {
 // SetConnection ...
 func (stream *Stream) SetConnection(connection net.Conn) {
 	stream.connection.Store(connection)
+	go stream.Read(connection)
+}
+
+// Close ...
+func (stream *Stream) Close() error {
+	stream.closed.Store(true)
+	err := stream.Connection().Close()
+
+	if err != nil {
+		return err
+	}
+
+	close(stream.Outgoing)
+	return nil
 }
 
 // Read ...
-func (stream *Stream) Read() error {
+func (stream *Stream) Read(connection net.Conn) {
 	typeBuffer := make([]byte, 1, 1)
 	lengthBuffer := make([]byte, 8, 8)
 
 	for {
-		connection := stream.Connection()
-
-		if connection == nil {
-			time.Sleep(1 * time.Millisecond)
-			continue
+		if stream.closed.Load().(bool) {
+			return
 		}
 
 		_, err := connection.Read(typeBuffer)
 
 		if err != nil {
-			return err
+			stream.Errors <- IOError{connection, err}
+			return
 		}
 
 		_, err = connection.Read(lengthBuffer)
 
 		if err != nil {
-			return err
+			stream.Errors <- IOError{connection, err}
+			return
 		}
 
 		length, err := Int64FromBytes(lengthBuffer)
 
 		if err != nil {
-			return err
+			stream.Errors <- IOError{connection, err}
+			return
 		}
 
 		data := make([]byte, length)
 		readLength := 0
+		n := 0
 
 		for readLength < len(data) {
-			n, err := connection.Read(data[readLength:])
+			n, err = connection.Read(data[readLength:])
 			readLength += n
 
 			if err != nil {
-				return err
+				stream.Errors <- IOError{connection, err}
+				return
 			}
 		}
 
@@ -84,22 +110,28 @@ func (stream *Stream) Read() error {
 }
 
 // Write ...
-func (stream *Stream) Write() error {
+func (stream *Stream) Write() {
 	for packet := range stream.Outgoing {
-		connection := stream.Connection()
 		msg := packet.Bytes()
+
+	retry:
+		if stream.closed.Load().(bool) {
+			return
+		}
+
+		connection := stream.Connection()
 		totalWritten := 0
 
 		for totalWritten < len(msg) {
 			writtenThisCall, err := connection.Write(msg[totalWritten:])
 
 			if err != nil {
-				return err
+				stream.Errors <- IOError{connection, err}
+				time.Sleep(1 * time.Millisecond)
+				goto retry
 			}
 
 			totalWritten += writtenThisCall
 		}
 	}
-
-	return nil
 }

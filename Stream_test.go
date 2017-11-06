@@ -9,25 +9,37 @@ import (
 	"github.com/aerogo/packet"
 )
 
-func TestCommunication(t *testing.T) {
-	// Server
+func startServer(t *testing.T) {
 	listener, err := net.Listen("tcp", ":7000")
 	assert.NoError(t, err)
 
 	go func() {
-		conn, err := listener.Accept()
-		assert.NoError(t, err)
+		for {
+			conn, err := listener.Accept()
+			assert.NoError(t, err)
 
-		client := packet.NewStream(1024)
-		client.SetConnection(conn)
+			client := packet.NewStream(1024)
+			client.SetConnection(conn)
 
-		go func() {
-			for msg := range client.Incoming {
-				assert.Equal(t, "ping", string(msg.Data))
-				client.Outgoing <- packet.New(0, []byte("pong"))
-			}
-		}()
+			go func() {
+				for _ = range client.Errors {
+					//
+				}
+			}()
+
+			go func() {
+				for msg := range client.Incoming {
+					assert.Equal(t, "ping", string(msg.Data))
+					client.Outgoing <- packet.New(0, []byte("pong"))
+				}
+			}()
+		}
 	}()
+}
+
+func TestCommunication(t *testing.T) {
+	// Server
+	startServer(t)
 
 	// Client
 	conn, err := net.Dial("tcp", "localhost:7000")
@@ -36,7 +48,31 @@ func TestCommunication(t *testing.T) {
 	client := packet.NewStream(1024)
 	client.SetConnection(conn)
 
+	go func() {
+		for _ = range client.Errors {
+			//
+		}
+	}()
+
 	client.Outgoing <- packet.New(0, []byte("ping"))
 	msg := <-client.Incoming
 	assert.Equal(t, "pong", string(msg.Data))
+
+	// Close connection
+	conn.Close()
+
+	// Send packet (will be buffered until reconnect finishes)
+	client.Outgoing <- packet.New(0, []byte("ping"))
+
+	// Reconnect
+	conn, err = net.Dial("tcp", "localhost:7000")
+	assert.NoError(t, err)
+
+	// Hot-swap connection
+	client.SetConnection(conn)
+	msg = <-client.Incoming
+	assert.Equal(t, "pong", string(msg.Data))
+
+	// Close
+	client.Close()
 }
