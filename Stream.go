@@ -2,13 +2,38 @@ package packet
 
 import (
 	"net"
+	"sync/atomic"
+	"time"
 )
 
 // Stream ...
 type Stream struct {
-	Connection net.Conn
+	connection atomic.Value
 	Incoming   chan *Packet
 	Outgoing   chan *Packet
+}
+
+// NewStream ...
+func NewStream(channelBufferSize int) *Stream {
+	stream := &Stream{
+		Incoming: make(chan *Packet, channelBufferSize),
+		Outgoing: make(chan *Packet, channelBufferSize),
+	}
+
+	go stream.Read()
+	go stream.Write()
+
+	return stream
+}
+
+// Connection ...
+func (stream *Stream) Connection() net.Conn {
+	return stream.connection.Load().(net.Conn)
+}
+
+// SetConnection ...
+func (stream *Stream) SetConnection(connection net.Conn) {
+	stream.connection.Store(connection)
 }
 
 // Read ...
@@ -17,13 +42,20 @@ func (stream *Stream) Read() error {
 	lengthBuffer := make([]byte, 8, 8)
 
 	for {
-		_, err := stream.Connection.Read(typeBuffer)
+		connection := stream.Connection()
+
+		if connection == nil {
+			time.Sleep(1 * time.Millisecond)
+			continue
+		}
+
+		_, err := connection.Read(typeBuffer)
 
 		if err != nil {
 			return err
 		}
 
-		_, err = stream.Connection.Read(lengthBuffer)
+		_, err = connection.Read(lengthBuffer)
 
 		if err != nil {
 			return err
@@ -39,7 +71,7 @@ func (stream *Stream) Read() error {
 		readLength := 0
 
 		for readLength < len(data) {
-			n, err := stream.Connection.Read(data[readLength:])
+			n, err := connection.Read(data[readLength:])
 			readLength += n
 
 			if err != nil {
@@ -54,11 +86,12 @@ func (stream *Stream) Read() error {
 // Write ...
 func (stream *Stream) Write() error {
 	for packet := range stream.Outgoing {
+		connection := stream.Connection()
 		msg := packet.Bytes()
 		totalWritten := 0
 
 		for totalWritten < len(msg) {
-			writtenThisCall, err := stream.Connection.Write(msg[totalWritten:])
+			writtenThisCall, err := connection.Write(msg[totalWritten:])
 
 			if err != nil {
 				return err
