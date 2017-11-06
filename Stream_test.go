@@ -22,12 +22,6 @@ func startServer(t *testing.T) {
 			client.SetConnection(conn)
 
 			go func() {
-				for _ = range client.Errors {
-					//
-				}
-			}()
-
-			go func() {
 				for msg := range client.Incoming {
 					assert.Equal(t, "ping", string(msg.Data))
 					client.Outgoing <- packet.New(0, []byte("pong"))
@@ -47,12 +41,6 @@ func TestCommunication(t *testing.T) {
 
 	client := packet.NewStream(1024)
 	client.SetConnection(conn)
-
-	go func() {
-		for _ = range client.Errors {
-			//
-		}
-	}()
 
 	client.Outgoing <- packet.New(0, []byte("ping"))
 	msg := <-client.Incoming

@@ -11,7 +11,7 @@ type Stream struct {
 	connection atomic.Value
 	Incoming   chan *Packet
 	Outgoing   chan *Packet
-	Errors     chan IOError
+	onError    func(IOError)
 	closed     atomic.Value
 }
 
@@ -26,7 +26,7 @@ func NewStream(channelBufferSize int) *Stream {
 	stream := &Stream{
 		Incoming: make(chan *Packet, channelBufferSize),
 		Outgoing: make(chan *Packet, channelBufferSize),
-		Errors:   make(chan IOError),
+		onError:  func(IOError) {},
 	}
 
 	stream.closed.Store(false)
@@ -45,6 +45,15 @@ func (stream *Stream) Connection() net.Conn {
 func (stream *Stream) SetConnection(connection net.Conn) {
 	stream.connection.Store(connection)
 	go stream.Read(connection)
+}
+
+// OnError ...
+func (stream *Stream) OnError(callback func(IOError)) {
+	if callback == nil {
+		panic("OnError using nil callback")
+	}
+
+	stream.onError = callback
 }
 
 // Close ...
@@ -73,21 +82,21 @@ func (stream *Stream) Read(connection net.Conn) {
 		_, err := connection.Read(typeBuffer)
 
 		if err != nil {
-			stream.Errors <- IOError{connection, err}
+			stream.onError(IOError{connection, err})
 			return
 		}
 
 		_, err = connection.Read(lengthBuffer)
 
 		if err != nil {
-			stream.Errors <- IOError{connection, err}
+			stream.onError(IOError{connection, err})
 			return
 		}
 
 		length, err := Int64FromBytes(lengthBuffer)
 
 		if err != nil {
-			stream.Errors <- IOError{connection, err}
+			stream.onError(IOError{connection, err})
 			return
 		}
 
@@ -100,7 +109,7 @@ func (stream *Stream) Read(connection net.Conn) {
 			readLength += n
 
 			if err != nil {
-				stream.Errors <- IOError{connection, err}
+				stream.onError(IOError{connection, err})
 				return
 			}
 		}
@@ -126,7 +135,7 @@ func (stream *Stream) Write() {
 			writtenThisCall, err := connection.Write(msg[totalWritten:])
 
 			if err != nil {
-				stream.Errors <- IOError{connection, err}
+				stream.onError(IOError{connection, err})
 				time.Sleep(1 * time.Millisecond)
 				goto retry
 			}
