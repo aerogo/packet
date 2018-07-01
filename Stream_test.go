@@ -16,12 +16,16 @@ func startServer(t *testing.T) {
 	go func() {
 		for {
 			conn, err := listener.Accept()
+
+			assert.NotNil(t, conn)
 			assert.NoError(t, err)
 
 			client := packet.NewStream(1024)
+
 			client.OnError(func(_ packet.IOError) {
 				client.Close()
 			})
+
 			client.SetConnection(conn)
 
 			go func() {
@@ -45,7 +49,10 @@ func TestCommunication(t *testing.T) {
 	client := packet.NewStream(1024)
 	client.SetConnection(conn)
 
+	// Send message
 	client.Outgoing <- packet.New(0, []byte("ping"))
+
+	// Receive message
 	msg := <-client.Incoming
 	assert.Equal(t, "pong", string(msg.Data))
 
@@ -61,6 +68,8 @@ func TestCommunication(t *testing.T) {
 
 	// Hot-swap connection
 	client.SetConnection(conn)
+
+	// Receive message
 	msg = <-client.Incoming
 	assert.Equal(t, "pong", string(msg.Data))
 

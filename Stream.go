@@ -67,8 +67,8 @@ func (stream *Stream) Close() {
 
 // Read ...
 func (stream *Stream) Read(connection net.Conn) {
-	typeBuffer := make([]byte, 1, 1)
-	lengthBuffer := make([]byte, 8, 8)
+	typeBuffer := make([]byte, 1)
+	lengthBuffer := make([]byte, 8)
 
 	for {
 		if stream.closed.Load().(bool) {
