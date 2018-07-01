@@ -22,7 +22,7 @@ type IOError struct {
 	Error      error
 }
 
-// NewStream creates a new stream with the given |channelBufferSize|.
+// NewStream creates a new stream with the given channelBufferSize.
 func NewStream(channelBufferSize int) *Stream {
 	stream := &Stream{
 		Incoming: make(chan *Packet, channelBufferSize),
@@ -51,7 +51,7 @@ func (stream *Stream) SetConnection(connection net.Conn) {
 	go stream.Read(connection)
 }
 
-// OnError sets the |callback| that should be called when IO errors occur.
+// OnError sets the callback that should be called when IO errors occur.
 func (stream *Stream) OnError(callback func(IOError)) {
 	if callback == nil {
 		panic("OnError using nil callback")

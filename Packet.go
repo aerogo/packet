@@ -10,8 +10,8 @@ type Packet struct {
 }
 
 // New creates a new packet.
-// It expects a |byteCode| for the type of message and
-// a |data| parameter in the form of a byte slice.
+// It expects a byteCode for the type of message and
+// a data parameter in the form of a byte slice.
 func New(byteCode byte, data []byte) *Packet {
 	return &Packet{
 		Type:   byteCode,
