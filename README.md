@@ -45,13 +45,13 @@ if string(msg.Data) != "pong" {
 |---|
 | [Eduard Urbach](https://eduardurbach.com) |
 
-[godoc-image]: https://godoc.org/github.com/aerogo/aero?status.svg
-[godoc-url]: https://godoc.org/github.com/aerogo/aero
-[goreportcard-image]: https://goreportcard.com/badge/github.com/aerogo/aero
-[goreportcard-url]: https://goreportcard.com/report/github.com/aerogo/aero
-[travis-image]: https://travis-ci.org/aerogo/aero.svg?branch=master
-[travis-url]: https://travis-ci.org/aerogo/aero
-[codecov-image]: https://codecov.io/gh/aerogo/aero/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/aerogo/aero
+[godoc-image]: https://godoc.org/github.com/aerogo/packet?status.svg
+[godoc-url]: https://godoc.org/github.com/aerogo/packet
+[goreportcard-image]: https://goreportcard.com/badge/github.com/aerogo/packet
+[goreportcard-url]: https://goreportcard.com/report/github.com/aerogo/packet
+[travis-image]: https://travis-ci.org/aerogo/packet.svg?branch=master
+[travis-url]: https://travis-ci.org/aerogo/packet
+[codecov-image]: https://codecov.io/gh/aerogo/packet/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/aerogo/packet
 [license-image]: https://img.shields.io/badge/license-MIT-blue.svg
-[license-url]: https://github.com/aerogo/aero/blob/master/LICENSE
+[license-url]: https://github.com/aerogo/packet/blob/master/LICENSE
