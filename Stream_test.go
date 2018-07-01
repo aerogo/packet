@@ -11,6 +11,8 @@ import (
 
 func startServer(t *testing.T) {
 	listener, err := net.Listen("tcp", ":7000")
+
+	assert.NotNil(t, listener)
 	assert.NoError(t, err)
 
 	go func() {

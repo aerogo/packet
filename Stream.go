@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Stream ...
+// Stream represents a writable and readable network stream.
 type Stream struct {
 	connection atomic.Value
 	Incoming   chan *Packet
@@ -16,13 +16,13 @@ type Stream struct {
 	closed     atomic.Value
 }
 
-// IOError ...
+// IOError is the data type for errors occuring in case of failure.
 type IOError struct {
 	Connection net.Conn
 	Error      error
 }
 
-// NewStream ...
+// NewStream creates a new stream with the given |channelBufferSize|.
 func NewStream(channelBufferSize int) *Stream {
 	stream := &Stream{
 		Incoming: make(chan *Packet, channelBufferSize),
@@ -38,18 +38,20 @@ func NewStream(channelBufferSize int) *Stream {
 	return stream
 }
 
-// Connection ...
+// Connection returns the internal TCP/UDP connection object.
 func (stream *Stream) Connection() net.Conn {
 	return stream.connection.Load().(net.Conn)
 }
 
-// SetConnection ...
+// SetConnection sets the connection that the stream uses and
+// it can be called multiple times on a single stream,
+// effectively allowing you to hot-swap connections in failure cases.
 func (stream *Stream) SetConnection(connection net.Conn) {
 	stream.connection.Store(connection)
 	go stream.Read(connection)
 }
 
-// OnError ...
+// OnError sets the |callback| that should be called when IO errors occur.
 func (stream *Stream) OnError(callback func(IOError)) {
 	if callback == nil {
 		panic("OnError using nil callback")
@@ -58,14 +60,15 @@ func (stream *Stream) OnError(callback func(IOError)) {
 	stream.onError = callback
 }
 
-// Close ...
+// Close closes the stream.
 func (stream *Stream) Close() {
 	stream.closed.Store(true)
 	stream.close <- true
 	<-stream.close
 }
 
-// Read ...
+// Read starts a blocking routine that will read incoming messages.
+// This function is meant to be called as a concurrent goroutine.
 func (stream *Stream) Read(connection net.Conn) {
 	typeBuffer := make([]byte, 1)
 	lengthBuffer := make([]byte, 8)
@@ -114,7 +117,8 @@ func (stream *Stream) Read(connection net.Conn) {
 	}
 }
 
-// Write ...
+// Write starts a blocking routine that will write outgoing messages.
+// This function is meant to be called as a concurrent goroutine.
 func (stream *Stream) Write() {
 	for {
 		select {
