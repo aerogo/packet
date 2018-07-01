@@ -39,6 +39,24 @@ if string(msg.Data) != "pong" {
 }
 ```
 
+## Hot-swap example
+
+```go
+// Close server connection to simulate server death
+server.Close()
+
+// Send packet while server is down (will be buffered until it reconnects)
+client.Outgoing <- packet.New(0, []byte("ping"))
+
+// Reconnect
+newServer, _ := net.Dial("tcp", "localhost:7000")
+
+// Hot-swap connection
+client.SetConnection(newServer)
+
+// The previously buffered messages in the Outgoing channel will be sent now.
+```
+
 ## Author
 
 | [![Eduard Urbach on Twitter](https://gravatar.com/avatar/16ed4d41a5f244d1b10de1b791657989?s=70)](https://twitter.com/eduardurbach "Follow @eduardurbach on Twitter") |
