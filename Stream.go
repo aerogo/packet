@@ -101,11 +101,6 @@ func (stream *Stream) read(connection net.Conn) {
 			}
 		}
 
-		if err != nil {
-			stream.onError(IOError{connection, err})
-			return
-		}
-
 		stream.Incoming <- New(typeBuffer[0], data)
 	}
 }
