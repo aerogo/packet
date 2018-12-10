@@ -65,6 +65,7 @@ func (stream *Stream) Close() {
 	stream.closed.Store(true)
 	stream.close <- true
 	<-stream.close
+	close(stream.Incoming)
 }
 
 // Read starts a blocking routine that will read incoming messages.
