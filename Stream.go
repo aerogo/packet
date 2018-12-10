@@ -72,6 +72,7 @@ func (stream *Stream) Close() {
 // Read starts a blocking routine that will read incoming messages.
 // This function is meant to be called as a concurrent goroutine.
 func (stream *Stream) Read(connection net.Conn) {
+	var length int64
 	typeBuffer := make([]byte, 1)
 
 	for {
@@ -86,7 +87,6 @@ func (stream *Stream) Read(connection net.Conn) {
 			return
 		}
 
-		var length int64
 		err = binary.Read(connection, binary.BigEndian, &length)
 
 		if err != nil {
