@@ -66,7 +66,6 @@ func (stream *Stream) Close() {
 	stream.closed.Store(true)
 	stream.close <- true
 	<-stream.close
-	close(stream.Incoming)
 }
 
 // Read starts a blocking routine that will read incoming messages.
@@ -95,17 +94,11 @@ func (stream *Stream) Read(connection net.Conn) {
 		}
 
 		data := make([]byte, length)
-		readLength := 0
-		n := 0
+		_, err = connection.Read(data)
 
-		for readLength < len(data) {
-			n, err = connection.Read(data[readLength:])
-			readLength += n
-
-			if err != nil {
-				stream.onError(IOError{connection, err})
-				return
-			}
+		if err != nil {
+			stream.onError(IOError{connection, err})
+			return
 		}
 
 		stream.Incoming <- New(typeBuffer[0], data)
