@@ -2,39 +2,29 @@ package packet
 
 import (
 	"encoding/binary"
+	"fmt"
 	"net"
 	"sync/atomic"
-	"time"
 )
 
 // Stream represents a writable and readable network stream.
 type Stream struct {
-	connection atomic.Value
-	Incoming   chan *Packet
-	Outgoing   chan *Packet
-	onError    func(IOError)
-	close      chan bool
-	closed     atomic.Value
+	connection  atomic.Value
+	Incoming    chan *Packet
+	Outgoing    chan *Packet
+	closeWriter chan struct{}
+	onError     func(IOError)
+	verbose     bool
 }
 
-// IOError is the data type for errors occuring in case of failure.
-type IOError struct {
-	Connection net.Conn
-	Error      error
-}
-
-// NewStream creates a new stream with the given channelBufferSize.
+// NewStream creates a new stream with the given channel buffer size.
 func NewStream(channelBufferSize int) *Stream {
 	stream := &Stream{
-		Incoming: make(chan *Packet, channelBufferSize),
-		Outgoing: make(chan *Packet, channelBufferSize),
-		close:    make(chan bool),
-		onError:  func(IOError) {},
+		Incoming:    make(chan *Packet, channelBufferSize),
+		Outgoing:    make(chan *Packet, channelBufferSize),
+		closeWriter: make(chan struct{}),
+		onError:     func(IOError) {},
 	}
-
-	stream.closed.Store(false)
-
-	go stream.Write()
 
 	return stream
 }
@@ -48,8 +38,14 @@ func (stream *Stream) Connection() net.Conn {
 // it can be called multiple times on a single stream,
 // effectively allowing you to hot-swap connections in failure cases.
 func (stream *Stream) SetConnection(connection net.Conn) {
+	if connection == nil {
+		panic("connection is nil")
+	}
+
 	stream.connection.Store(connection)
-	go stream.Read(connection)
+
+	go stream.read(connection)
+	go stream.write(connection)
 }
 
 // OnError sets the callback that should be called when IO errors occur.
@@ -61,24 +57,22 @@ func (stream *Stream) OnError(callback func(IOError)) {
 	stream.onError = callback
 }
 
-// Close closes the stream.
-func (stream *Stream) Close() {
-	stream.closed.Store(true)
-	stream.close <- true
-	<-stream.close
-}
-
-// Read starts a blocking routine that will read incoming messages.
+// read starts a blocking routine that will read incoming messages.
 // This function is meant to be called as a concurrent goroutine.
-func (stream *Stream) Read(connection net.Conn) {
+func (stream *Stream) read(connection net.Conn) {
+	defer func() {
+		stream.closeWriter <- struct{}{}
+	}()
+
+	if stream.verbose {
+		fmt.Println("start read", connection.LocalAddr(), "->", connection.RemoteAddr())
+		defer fmt.Println("end read", connection.LocalAddr(), "->", connection.RemoteAddr())
+	}
+
 	var length int64
 	typeBuffer := make([]byte, 1)
 
 	for {
-		if stream.closed.Load().(bool) {
-			return
-		}
-
 		_, err := connection.Read(typeBuffer)
 
 		if err != nil {
@@ -94,7 +88,18 @@ func (stream *Stream) Read(connection net.Conn) {
 		}
 
 		data := make([]byte, length)
-		_, err = connection.Read(data)
+		readLength := 0
+		n := 0
+
+		for readLength < len(data) {
+			n, err = connection.Read(data[readLength:])
+			readLength += n
+
+			if err != nil {
+				stream.onError(IOError{connection, err})
+				return
+			}
+		}
 
 		if err != nil {
 			stream.onError(IOError{connection, err})
@@ -105,38 +110,26 @@ func (stream *Stream) Read(connection net.Conn) {
 	}
 }
 
-// Write starts a blocking routine that will write outgoing messages.
+// write starts a blocking routine that will write outgoing messages.
 // This function is meant to be called as a concurrent goroutine.
-func (stream *Stream) Write() {
+func (stream *Stream) write(connection net.Conn) {
+	if stream.verbose {
+		fmt.Println("start write", connection.LocalAddr(), "->", connection.RemoteAddr())
+		defer fmt.Println("end write", connection.LocalAddr(), "->", connection.RemoteAddr())
+	}
+
 	for {
 		select {
+		case <-stream.closeWriter:
+			return
+
 		case packet := <-stream.Outgoing:
-			for {
-				if stream.closed.Load().(bool) {
-					break
-				}
-
-				connection := stream.Connection()
-				err := packet.Write(connection)
-
-				if err == nil {
-					break
-				}
-
-				stream.onError(IOError{connection, err})
-				time.Sleep(1 * time.Millisecond)
-			}
-
-		case <-stream.close:
-			connection := stream.Connection()
-			err := connection.Close()
+			err := packet.Write(connection)
 
 			if err != nil {
 				stream.onError(IOError{connection, err})
+				return
 			}
-
-			close(stream.close)
-			return
 		}
 	}
 }

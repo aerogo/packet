@@ -23,11 +23,6 @@ func startServer(t *testing.T) {
 			assert.NoError(t, err)
 
 			client := packet.NewStream(1024)
-
-			client.OnError(func(_ packet.IOError) {
-				client.Close()
-			})
-
 			client.SetConnection(conn)
 
 			go func() {
@@ -76,7 +71,7 @@ func TestCommunication(t *testing.T) {
 	assert.Equal(t, "pong", string(msg.Data))
 
 	// Close
-	client.Close()
+	client.Connection().Close()
 }
 
 func TestUtils(t *testing.T) {
