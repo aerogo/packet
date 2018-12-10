@@ -78,3 +78,12 @@ func TestCommunication(t *testing.T) {
 	// Close
 	client.Close()
 }
+
+func TestUtils(t *testing.T) {
+	ping := packet.New(0, []byte("ping"))
+	assert.Len(t, ping.Bytes(), 1+8+4)
+
+	length, err := packet.Int64FromBytes(packet.Int64ToBytes(ping.Length))
+	assert.NoError(t, err)
+	assert.Equal(t, ping.Length, length)
+}

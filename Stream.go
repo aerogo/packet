@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"encoding/binary"
 	"net"
 	"sync/atomic"
 	"time"
@@ -72,7 +73,6 @@ func (stream *Stream) Close() {
 // This function is meant to be called as a concurrent goroutine.
 func (stream *Stream) Read(connection net.Conn) {
 	typeBuffer := make([]byte, 1)
-	lengthBuffer := make([]byte, 8)
 
 	for {
 		if stream.closed.Load().(bool) {
@@ -86,14 +86,8 @@ func (stream *Stream) Read(connection net.Conn) {
 			return
 		}
 
-		_, err = connection.Read(lengthBuffer)
-
-		if err != nil {
-			stream.onError(IOError{connection, err})
-			return
-		}
-
-		length, err := Int64FromBytes(lengthBuffer)
+		var length int64
+		err = binary.Read(connection, binary.BigEndian, &length)
 
 		if err != nil {
 			stream.onError(IOError{connection, err})
@@ -124,26 +118,20 @@ func (stream *Stream) Write() {
 	for {
 		select {
 		case packet := <-stream.Outgoing:
-			msg := packet.Bytes()
-
-		retry:
-			if stream.closed.Load().(bool) {
-				break
-			}
-
-			connection := stream.Connection()
-			totalWritten := 0
-
-			for totalWritten < len(msg) {
-				writtenThisCall, err := connection.Write(msg[totalWritten:])
-
-				if err != nil {
-					stream.onError(IOError{connection, err})
-					time.Sleep(1 * time.Millisecond)
-					goto retry
+			for {
+				if stream.closed.Load().(bool) {
+					break
 				}
 
-				totalWritten += writtenThisCall
+				connection := stream.Connection()
+				err := packet.Write(connection)
+
+				if err == nil {
+					break
+				}
+
+				stream.onError(IOError{connection, err})
+				time.Sleep(1 * time.Millisecond)
 			}
 
 		case <-stream.close:
