@@ -51,6 +51,8 @@ func TestCommunication(t *testing.T) {
 
 	// Receive message
 	msg := <-client.Incoming
+
+	// Check message contents
 	assert.Equal(t, "pong", string(msg.Data))
 
 	// Close connection
