@@ -5,6 +5,11 @@ import (
 	"io"
 )
 
+// Send buffer size determines how many bytes we send in a single TCP write call.
+// This can be anything from 1 to 65495.
+// A good default value for this can be read from: /proc/sys/net/ipv4/tcp_wmem
+const sendBufferSize = 16384
+
 // Packet represents a single network message.
 // It has a byte code indicating the type of the message
 // and a data payload in the form of a byte slice.
@@ -39,7 +44,26 @@ func (packet *Packet) Write(writer io.Writer) error {
 		return err
 	}
 
-	_, err = writer.Write(packet.Data)
+	n := 0
+	bytesWritten := 0
+	writeUntil := 0
+
+	for bytesWritten < len(packet.Data) {
+		writeUntil = bytesWritten + sendBufferSize
+
+		if writeUntil > len(packet.Data) {
+			writeUntil = len(packet.Data)
+		}
+
+		n, err = writer.Write(packet.Data[bytesWritten:writeUntil])
+
+		if err != nil {
+			return err
+		}
+
+		bytesWritten += n
+	}
+
 	return err
 }
 
