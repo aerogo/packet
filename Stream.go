@@ -2,7 +2,6 @@ package packet
 
 import (
 	"encoding/binary"
-	"fmt"
 	"net"
 	"sync/atomic"
 )
@@ -14,7 +13,6 @@ type Stream struct {
 	Outgoing    chan *Packet
 	closeWriter chan struct{}
 	onError     func(IOError)
-	verbose     bool
 }
 
 // NewStream creates a new stream with the given channel buffer size.
@@ -64,11 +62,6 @@ func (stream *Stream) read(connection net.Conn) {
 		stream.closeWriter <- struct{}{}
 	}()
 
-	if stream.verbose {
-		fmt.Println("start read", connection.LocalAddr(), "->", connection.RemoteAddr())
-		defer fmt.Println("end read", connection.LocalAddr(), "->", connection.RemoteAddr())
-	}
-
 	var length int64
 	typeBuffer := make([]byte, 1)
 
@@ -108,11 +101,6 @@ func (stream *Stream) read(connection net.Conn) {
 // write starts a blocking routine that will write outgoing messages.
 // This function is meant to be called as a concurrent goroutine.
 func (stream *Stream) write(connection net.Conn) {
-	if stream.verbose {
-		fmt.Println("start write", connection.LocalAddr(), "->", connection.RemoteAddr())
-		defer fmt.Println("end write", connection.LocalAddr(), "->", connection.RemoteAddr())
-	}
-
 	for {
 		select {
 		case <-stream.closeWriter:
