@@ -16,6 +16,6 @@ func Int64FromBytes(b []byte) (int64, error) {
 // Int64ToBytes converts an int64 to its Big Endian representation.
 func Int64ToBytes(i int64) []byte {
 	buffer := &bytes.Buffer{}
-	binary.Write(buffer, binary.BigEndian, i)
+	_ = binary.Write(buffer, binary.BigEndian, i)
 	return buffer.Bytes()
 }

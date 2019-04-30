@@ -1,9 +1,9 @@
 # packet
 
-[![Godoc reference][godoc-image]][godoc-url]
-[![Go report card][goreportcard-image]][goreportcard-url]
-[![Tests][travis-image]][travis-url]
-[![Code coverage][codecov-image]][codecov-url]
+[![Reference][godoc-image]][godoc-url]
+[![Report][report-image]][report-url]
+[![Tests][tests-image]][tests-url]
+[![Coverage][codecov-image]][codecov-url]
 [![License][license-image]][license-url]
 
 Send network packets over a TCP or UDP connection.
@@ -65,11 +65,11 @@ client.SetConnection(newServer)
 
 [godoc-image]: https://godoc.org/github.com/aerogo/packet?status.svg
 [godoc-url]: https://godoc.org/github.com/aerogo/packet
-[goreportcard-image]: https://goreportcard.com/badge/github.com/aerogo/packet
-[goreportcard-url]: https://goreportcard.com/report/github.com/aerogo/packet
-[travis-image]: https://travis-ci.org/aerogo/packet.svg?branch=master
-[travis-url]: https://travis-ci.org/aerogo/packet
-[codecov-image]: https://codecov.io/gh/aerogo/packet/branch/master/graph/badge.svg
+[report-image]: https://goreportcard.com/badge/github.com/aerogo/packet
+[report-url]: https://goreportcard.com/report/github.com/aerogo/packet
+[tests-image]: https://cloud.drone.io/api/badges/aerogo/packet/status.svg
+[tests-url]: https://cloud.drone.io/aerogo/packet
+[codecov-image]: https://codecov.io/gh/aerogo/packet/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/aerogo/packet
 [license-image]: https://img.shields.io/badge/license-MIT-blue.svg
 [license-url]: https://github.com/aerogo/packet/blob/master/LICENSE
