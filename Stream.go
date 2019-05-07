@@ -2,6 +2,7 @@ package packet
 
 import (
 	"encoding/binary"
+	"errors"
 	"net"
 	"sync/atomic"
 )
@@ -37,7 +38,7 @@ func (stream *Stream) Connection() net.Conn {
 // effectively allowing you to hot-swap connections in failure cases.
 func (stream *Stream) SetConnection(connection net.Conn) {
 	if connection == nil {
-		panic("connection is nil")
+		panic(errors.New("SetConnection using nil connection"))
 	}
 
 	stream.connection.Store(connection)
@@ -49,7 +50,7 @@ func (stream *Stream) SetConnection(connection net.Conn) {
 // OnError sets the callback that should be called when IO errors occur.
 func (stream *Stream) OnError(callback func(IOError)) {
 	if callback == nil {
-		panic("OnError using nil callback")
+		panic(errors.New("OnError using nil callback"))
 	}
 
 	stream.onError = callback
