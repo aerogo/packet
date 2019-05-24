@@ -3,6 +3,7 @@ package packet_test
 import (
 	"errors"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
@@ -13,9 +14,9 @@ import (
 
 // connectionWithReadError errors the Read call after `errorOnReadNumber` tries.
 type connectionWithReadError struct {
+	net.Conn
 	countReads        int
 	errorOnReadNumber int
-	inner             net.Conn
 }
 
 func (conn *connectionWithReadError) Read(buffer []byte) (int, error) {
@@ -25,39 +26,11 @@ func (conn *connectionWithReadError) Read(buffer []byte) (int, error) {
 		return 0, errors.New("Artificial error")
 	}
 
-	return conn.inner.Read(buffer)
+	return conn.Conn.Read(buffer)
 }
 
-func (conn *connectionWithReadError) Write(buffer []byte) (n int, err error) {
-	return conn.inner.Write(buffer)
-}
-
-func (conn *connectionWithReadError) Close() error {
-	return conn.inner.Close()
-}
-
-func (conn *connectionWithReadError) LocalAddr() net.Addr {
-	return conn.inner.LocalAddr()
-}
-
-func (conn *connectionWithReadError) RemoteAddr() net.Addr {
-	return conn.inner.RemoteAddr()
-}
-
-func (conn *connectionWithReadError) SetDeadline(t time.Time) error {
-	return conn.inner.SetDeadline(t)
-}
-
-func (conn *connectionWithReadError) SetReadDeadline(t time.Time) error {
-	return conn.inner.SetReadDeadline(t)
-}
-
-func (conn *connectionWithReadError) SetWriteDeadline(t time.Time) error {
-	return conn.inner.SetWriteDeadline(t)
-}
-
-func startServer(t *testing.T) net.Listener {
-	listener, err := net.Listen("tcp", ":7000")
+func startServer(t *testing.T, port int) net.Listener {
+	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 
 	assert.NotNil(t, listener)
 	assert.NoError(t, err)
@@ -95,7 +68,8 @@ func startServer(t *testing.T) net.Listener {
 
 func TestCommunication(t *testing.T) {
 	// Server
-	server := startServer(t)
+	server := startServer(t, 7000)
+	defer server.Close()
 
 	// Client
 	conn, err := net.Dial("tcp", "localhost:7000")
@@ -132,11 +106,10 @@ func TestCommunication(t *testing.T) {
 
 	// Close
 	client.Connection().Close()
-	server.Close()
 }
 
 func TestDisconnect(t *testing.T) {
-	listener, err := net.Listen("tcp", ":7000")
+	listener, err := net.Listen("tcp", ":7001")
 	assert.NotNil(t, listener)
 	assert.NoError(t, err)
 	defer listener.Close()
@@ -170,7 +143,7 @@ func TestDisconnect(t *testing.T) {
 	}()
 
 	// Client
-	conn, err := net.Dial("tcp", "localhost:7000")
+	conn, err := net.Dial("tcp", "localhost:7001")
 	assert.NoError(t, err)
 	defer conn.Close()
 
@@ -220,11 +193,11 @@ func TestNilOnError(t *testing.T) {
 
 func TestWriteTimeout(t *testing.T) {
 	// Server
-	server := startServer(t)
+	server := startServer(t, 7002)
 	defer server.Close()
 
 	// Client
-	conn, err := net.Dial("tcp", "localhost:7000")
+	conn, err := net.Dial("tcp", "localhost:7002")
 	assert.NoError(t, err)
 	defer conn.Close()
 
@@ -239,31 +212,33 @@ func TestWriteTimeout(t *testing.T) {
 
 func TestReadError(t *testing.T) {
 	// Server
-	server := startServer(t)
+	server := startServer(t, 7003)
 	defer server.Close()
 
 	// Client
 	for failNumber := 1; failNumber <= 3; failNumber++ {
-		conn, err := net.Dial("tcp", "localhost:7000")
+		conn, err := net.Dial("tcp", "localhost:7003")
+		assert.NotNil(t, conn)
 		assert.NoError(t, err)
 
 		// Make the 2nd read fail
 		conn = &connectionWithReadError{
-			inner:             conn,
+			Conn:              conn,
 			errorOnReadNumber: failNumber,
 		}
 
-		defer conn.Close()
-
-		client := packet.NewStream(0)
+		client := packet.NewStream(1)
 		client.SetConnection(conn)
 
 		// Send message
 		client.Outgoing <- packet.New(0, []byte("ping"))
+
+		// err = conn.Close()
+		// assert.NoError(t, err)
 	}
 
 	// Send a real message without read errors
-	conn, err := net.Dial("tcp", "localhost:7000")
+	conn, err := net.Dial("tcp", "localhost:7003")
 	assert.NoError(t, err)
 	defer conn.Close()
 	client := packet.NewStream(0)
