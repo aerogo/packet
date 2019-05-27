@@ -1,6 +1,8 @@
 package packet
 
-import "net"
+import (
+	"net"
+)
 
 // IOError is the data type for errors occurring in case of failure.
 type IOError struct {
