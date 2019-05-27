@@ -9,9 +9,11 @@ import (
 
 // Stream represents a writable and readable network stream.
 type Stream struct {
+	Incoming    <-chan *Packet
+	Outgoing    chan<- *Packet
+	in          chan *Packet
+	out         chan *Packet
 	connection  atomic.Value
-	Incoming    chan *Packet
-	Outgoing    chan *Packet
 	closeWriter chan struct{}
 	onError     func(IOError)
 }
@@ -19,11 +21,17 @@ type Stream struct {
 // NewStream creates a new stream with the given channel buffer size.
 func NewStream(channelBufferSize int) *Stream {
 	stream := &Stream{
-		Incoming:    make(chan *Packet, channelBufferSize),
-		Outgoing:    make(chan *Packet, channelBufferSize),
+		in:          make(chan *Packet, channelBufferSize),
+		out:         make(chan *Packet, channelBufferSize),
 		closeWriter: make(chan struct{}),
 		onError:     func(IOError) {},
 	}
+
+	// The public fields point to the same channels,
+	// but can only be used for receiving or sending,
+	// respectively.
+	stream.Incoming = stream.in
+	stream.Outgoing = stream.out
 
 	return stream
 }
@@ -95,7 +103,7 @@ func (stream *Stream) read(connection net.Conn) {
 			}
 		}
 
-		stream.Incoming <- New(typeBuffer[0], data)
+		stream.in <- New(typeBuffer[0], data)
 	}
 }
 
@@ -107,7 +115,7 @@ func (stream *Stream) write(connection net.Conn) {
 		case <-stream.closeWriter:
 			return
 
-		case packet := <-stream.Outgoing:
+		case packet := <-stream.out:
 			err := packet.Write(connection)
 
 			if err != nil {
