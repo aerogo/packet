@@ -7,9 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/aerogo/packet"
+	"github.com/akyoto/assert"
 )
 
 // connectionWithReadError errors the Read call after `errorOnReadNumber` tries.
@@ -33,7 +32,7 @@ func startServer(t *testing.T, port int) net.Listener {
 	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 
 	assert.NotNil(t, listener)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
 	go func() {
 		for {
@@ -44,7 +43,7 @@ func startServer(t *testing.T, port int) net.Listener {
 			}
 
 			assert.NotNil(t, conn)
-			assert.NoError(t, err)
+			assert.Nil(t, err)
 
 			client := packet.NewStream(1024)
 
@@ -73,7 +72,7 @@ func TestCommunication(t *testing.T) {
 
 	// Client
 	conn, err := net.Dial("tcp", "localhost:7000")
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
 	client := packet.NewStream(1024)
 	client.SetConnection(conn)
@@ -95,7 +94,7 @@ func TestCommunication(t *testing.T) {
 
 	// Reconnect
 	conn, err = net.Dial("tcp", "localhost:7000")
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
 	// Hot-swap connection
 	client.SetConnection(conn)
@@ -111,7 +110,7 @@ func TestCommunication(t *testing.T) {
 func TestDisconnect(t *testing.T) {
 	listener, err := net.Listen("tcp", ":7001")
 	assert.NotNil(t, listener)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	defer listener.Close()
 
 	go func() {
@@ -123,7 +122,7 @@ func TestDisconnect(t *testing.T) {
 			}
 
 			assert.NotNil(t, conn)
-			assert.NoError(t, err)
+			assert.Nil(t, err)
 
 			client := packet.NewStream(1024)
 
@@ -144,7 +143,7 @@ func TestDisconnect(t *testing.T) {
 
 	// Client
 	conn, err := net.Dial("tcp", "localhost:7001")
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	defer conn.Close()
 
 	client := packet.NewStream(1024)
@@ -162,10 +161,10 @@ func TestDisconnect(t *testing.T) {
 
 func TestUtils(t *testing.T) {
 	ping := packet.New(0, []byte("ping"))
-	assert.Len(t, ping.Bytes(), 1+8+4)
+	assert.Equal(t, len(ping.Bytes()), 1+8+4)
 
 	length, err := packet.Int64FromBytes(packet.Int64ToBytes(ping.Length))
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, ping.Length, length)
 }
 
@@ -198,7 +197,7 @@ func TestWriteTimeout(t *testing.T) {
 
 	// Client
 	conn, err := net.Dial("tcp", "localhost:7002")
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	defer conn.Close()
 
 	client := packet.NewStream(0)
@@ -206,7 +205,7 @@ func TestWriteTimeout(t *testing.T) {
 
 	// Send message
 	err = conn.SetWriteDeadline(time.Now())
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	client.Outgoing <- packet.New(0, []byte("ping"))
 }
 
@@ -219,7 +218,7 @@ func TestReadError(t *testing.T) {
 	for failNumber := 1; failNumber <= 3; failNumber++ {
 		conn, err := net.Dial("tcp", "localhost:7003")
 		assert.NotNil(t, conn)
-		assert.NoError(t, err)
+		assert.Nil(t, err)
 
 		// Make the 2nd read fail
 		conn = &connectionWithReadError{
@@ -234,12 +233,12 @@ func TestReadError(t *testing.T) {
 		client.Outgoing <- packet.New(0, []byte("ping"))
 
 		// err = conn.Close()
-		// assert.NoError(t, err)
+		// assert.Nil(t, err)
 	}
 
 	// Send a real message without read errors
 	conn, err := net.Dial("tcp", "localhost:7003")
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	defer conn.Close()
 	client := packet.NewStream(0)
 	client.SetConnection(conn)
