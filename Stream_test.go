@@ -104,7 +104,7 @@ func TestCommunication(t *testing.T) {
 	assert.Equal(t, "pong", string(msg.Data))
 
 	// Close
-	client.Connection().Close()
+	client.Close()
 }
 
 func TestDisconnect(t *testing.T) {

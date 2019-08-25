@@ -64,6 +64,12 @@ func (stream *Stream) OnError(callback func(IOError)) {
 	stream.onError = callback
 }
 
+// Close frees up the resources used by the stream and closes the connection.
+func (stream *Stream) Close() {
+	stream.Connection().Close()
+	close(stream.in)
+}
+
 // read starts a blocking routine that will read incoming messages.
 // This function is meant to be called as a concurrent goroutine.
 func (stream *Stream) read(connection net.Conn) {
