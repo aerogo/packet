@@ -38,20 +38,19 @@ func startServer(t *testing.T, port int) net.Listener {
 		for {
 			conn, err := listener.Accept()
 
-			if conn == nil {
-				return
-			}
-
 			assert.NotNil(t, conn)
 			assert.Nil(t, err)
 
 			client := packet.NewStream(1024)
 
-			client.OnError(func(err packet.IOError) {
+			err = client.OnError(func(err packet.IOError) {
 				conn.Close()
 			})
 
-			client.SetConnection(conn)
+			assert.Nil(t, err)
+
+			err = client.SetConnection(conn)
+			assert.Nil(t, err)
 
 			go func() {
 				for msg := range client.Incoming {
@@ -75,7 +74,8 @@ func TestCommunication(t *testing.T) {
 	assert.Nil(t, err)
 
 	client := packet.NewStream(1024)
-	client.SetConnection(conn)
+	err = client.SetConnection(conn)
+	assert.Nil(t, err)
 
 	// Send message
 	client.Outgoing <- packet.New(0, []byte("ping"))
@@ -97,7 +97,8 @@ func TestCommunication(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Hot-swap connection
-	client.SetConnection(conn)
+	err = client.SetConnection(conn)
+	assert.Nil(t, err)
 
 	// Receive message
 	msg = <-client.Incoming
@@ -126,11 +127,13 @@ func TestDisconnect(t *testing.T) {
 
 			client := packet.NewStream(1024)
 
-			client.OnError(func(err packet.IOError) {
+			err = client.OnError(func(err packet.IOError) {
 				conn.Close()
 			})
+			assert.Nil(t, err)
 
-			client.SetConnection(conn)
+			err = client.SetConnection(conn)
+			assert.Nil(t, err)
 
 			go func() {
 				for msg := range client.Incoming {
@@ -147,7 +150,8 @@ func TestDisconnect(t *testing.T) {
 	defer conn.Close()
 
 	client := packet.NewStream(1024)
-	client.SetConnection(conn)
+	err = client.SetConnection(conn)
+	assert.Nil(t, err)
 
 	// Send message
 	client.Outgoing <- packet.New(0, []byte("ping"))
@@ -169,25 +173,15 @@ func TestUtils(t *testing.T) {
 }
 
 func TestNilConnection(t *testing.T) {
-	defer func() {
-		err := recover()
-		assert.NotNil(t, err)
-		assert.Contains(t, err.(error).Error(), "nil")
-	}()
-
 	stream := packet.NewStream(0)
-	stream.SetConnection(nil)
+	err := stream.SetConnection(nil)
+	assert.NotNil(t, err)
 }
 
 func TestNilOnError(t *testing.T) {
-	defer func() {
-		err := recover()
-		assert.NotNil(t, err)
-		assert.Contains(t, err.(error).Error(), "nil")
-	}()
-
 	stream := packet.NewStream(0)
-	stream.OnError(nil)
+	err := stream.OnError(nil)
+	assert.NotNil(t, err)
 }
 
 func TestWriteTimeout(t *testing.T) {
@@ -202,6 +196,7 @@ func TestWriteTimeout(t *testing.T) {
 
 	client := packet.NewStream(0)
 	client.SetConnection(conn)
+	assert.Nil(t, err)
 
 	// Send message
 	err = conn.SetWriteDeadline(time.Now())
@@ -227,7 +222,8 @@ func TestReadError(t *testing.T) {
 		}
 
 		client := packet.NewStream(1)
-		client.SetConnection(conn)
+		err = client.SetConnection(conn)
+		assert.Nil(t, err)
 
 		// Send message
 		client.Outgoing <- packet.New(0, []byte("ping"))
@@ -240,8 +236,10 @@ func TestReadError(t *testing.T) {
 	conn, err := net.Dial("tcp", "localhost:7003")
 	assert.Nil(t, err)
 	defer conn.Close()
+
 	client := packet.NewStream(0)
-	client.SetConnection(conn)
+	err = client.SetConnection(conn)
+	assert.Nil(t, err)
 
 	// Send message
 	client.Outgoing <- packet.New(0, []byte("ping"))

@@ -44,30 +44,35 @@ func (stream *Stream) Connection() net.Conn {
 // SetConnection sets the connection that the stream uses and
 // it can be called multiple times on a single stream,
 // effectively allowing you to hot-swap connections in failure cases.
-func (stream *Stream) SetConnection(connection net.Conn) {
+func (stream *Stream) SetConnection(connection net.Conn) error {
 	if connection == nil {
-		panic(errors.New("SetConnection using nil connection"))
+		return errors.New("SetConnection using nil connection")
 	}
 
 	stream.connection.Store(connection)
 
 	go stream.read(connection)
 	go stream.write(connection)
+
+	return nil
 }
 
 // OnError sets the callback that should be called when IO errors occur.
-func (stream *Stream) OnError(callback func(IOError)) {
+func (stream *Stream) OnError(callback func(IOError)) error {
 	if callback == nil {
-		panic(errors.New("OnError using nil callback"))
+		return errors.New("OnError using nil callback")
 	}
 
 	stream.onError = callback
+
+	return nil
 }
 
 // Close frees up the resources used by the stream and closes the connection.
-func (stream *Stream) Close() {
-	stream.Connection().Close()
+func (stream *Stream) Close() error {
 	close(stream.in)
+
+	return stream.Connection().Close()
 }
 
 // read starts a blocking routine that will read incoming messages.

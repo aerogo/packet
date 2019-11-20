@@ -70,7 +70,9 @@ func (packet *Packet) Write(writer io.Writer) error {
 // Bytes returns the raw byte slice serialization of the packet.
 func (packet *Packet) Bytes() []byte {
 	result := []byte{packet.Type}
+
 	result = append(result, Int64ToBytes(packet.Length)...)
 	result = append(result, packet.Data...)
+
 	return result
 }
