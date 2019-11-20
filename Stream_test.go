@@ -38,6 +38,10 @@ func startServer(t *testing.T, port int) net.Listener {
 		for {
 			conn, err := listener.Accept()
 
+			if conn == nil {
+				return
+			}
+
 			assert.NotNil(t, conn)
 			assert.Nil(t, err)
 
@@ -46,7 +50,6 @@ func startServer(t *testing.T, port int) net.Listener {
 			err = client.OnError(func(err packet.IOError) {
 				conn.Close()
 			})
-
 			assert.Nil(t, err)
 
 			err = client.SetConnection(conn)
@@ -152,6 +155,7 @@ func TestDisconnect(t *testing.T) {
 	client := packet.NewStream(1024)
 	err = client.SetConnection(conn)
 	assert.Nil(t, err)
+	defer client.Close()
 
 	// Send message
 	client.Outgoing <- packet.New(0, []byte("ping"))
@@ -195,8 +199,9 @@ func TestWriteTimeout(t *testing.T) {
 	defer conn.Close()
 
 	client := packet.NewStream(0)
-	client.SetConnection(conn)
+	err = client.SetConnection(conn)
 	assert.Nil(t, err)
+	defer client.Close()
 
 	// Send message
 	err = conn.SetWriteDeadline(time.Now())
@@ -240,6 +245,7 @@ func TestReadError(t *testing.T) {
 	client := packet.NewStream(0)
 	err = client.SetConnection(conn)
 	assert.Nil(t, err)
+	defer client.Close()
 
 	// Send message
 	client.Outgoing <- packet.New(0, []byte("ping"))
